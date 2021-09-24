@@ -166,10 +166,10 @@ void kernel_main()
     keyboard_init();
 
     struct process* process = 0;
-    int32_t res = process_load_switch("0:/blank.bin", &process);
+    int32_t res = process_load_switch("0:/blank.elf", &process);
     if(res != CROSOS_ALL_OK)
     {
-        panic("Failed to load blank.bin");
+        panic("Failed to load blank.elf\n");
     }
     
     task_run_first_ever_task();

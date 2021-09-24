@@ -4,13 +4,22 @@
 #include "config.h"
 #include "task.h"
 
+#define PROCESS_FILETYPE_ELF 0
+#define PROCESS_FILETYPE_BINARY 1
+
+typedef unsigned char PROCESS_FILETYPE;
 struct process
 {
     uint8_t id; //Process id
     char filename[CROSOS_MAX_PATH];
     struct task* task; //Main process task
     void* allocations[CROSOS_MAX_PROGRAM_ALLOCATIONS]; //Whenever the process mallocs, we add the address here to free it when the process dies
-    void* ptr; //Physical pointer to process memory
+    PROCESS_FILETYPE filetype;
+    union 
+    {
+        void* ptr; //Physical pointer to process memory
+        struct elf_file* elf_file;
+    };
     void* stack; //Pointer to process stack
     uint32_t size; //Size of the data pointer by 'ptr'
     struct keyboard_buffer //Structure that holds the input buffer of the used keyboard

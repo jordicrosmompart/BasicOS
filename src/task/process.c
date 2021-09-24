@@ -6,6 +6,7 @@
 #include "string/string.h"
 #include "kernel.h"
 #include "memory/paging/paging.h"
+#include "loader/formats/elfloader.h"
 
 struct process* current_process = 0; //Current process that is running
 
@@ -68,7 +69,7 @@ static int32_t process_load_binary(const char* filename, struct process* process
         res = -EIO;
         goto out;
     }
-
+    process->filetype = PROCESS_FILETYPE_BINARY;
     process->ptr = program_data_pointer; //Stores physical location
     process->size = stat.filesize; //And size
 
@@ -76,12 +77,31 @@ out:
     fclose(fd); //Since it is loaded into memory, we dont need the file handle anymore
     return res;
 }
+static int32_t process_load_elf(const char* filename, struct process* process)
+{
+    int32_t res = 0;
+    struct elf_file* elf_file = 0;
+    res = elf_load(filename, &elf_file);
+    if (ISERR(res))
+    {
+        goto out;
+    }
+    process->filetype = PROCESS_FILETYPE_ELF;
+    process->elf_file = elf_file;
 
+out:   
+    return res;
+}
 //If we ever use elf files, this function is a generic access for different process formats
 static int32_t process_load_data(const char* filename, struct process* process)
 {
     int32_t res = 0;
-    res = process_load_binary(filename, process);
+    res = process_load_elf(filename, process);
+    if( res == -EINFORMAT)
+    {
+        res = process_load_binary(filename, process);
+    }
+
     return res;
 }
 
@@ -93,11 +113,45 @@ int32_t process_map_binary(struct process* process)
     return res;
 }
 
+int32_t process_map_elf(struct process* process)
+{
+    int res = 0;
+
+    struct elf_file* elf_file = process->elf_file;
+    struct elf_header* header = elf_header(elf_file);
+    struct elf32_phdr* phdrs = elf_pheader(header);
+    for(int32_t i = 0; i < header->e_phnum; i++)
+    {
+        struct elf32_phdr* phdr = &phdrs[i];
+        void* phdr_phys_address = elf_phdr_phys_address(elf_file, phdr);
+        int32_t flags = PAGING_IS_PRESENT | PAGING_ACCESS_FROM_ALL;
+        if(phdr->p_flags & PF_W)
+        {
+            flags |= PAGING_IS_WRITABLE;
+        }
+        res = paging_map_to(process->task->page_directory, paging_align_to_lower_page((void*) phdr->p_vaddr), paging_align_to_lower_page((void*) phdr_phys_address), paging_align_address(phdr_phys_address + phdr->p_filesz), flags);
+        if(ISERR(res))
+        {
+            break;
+        }
+    }
+    return res;
+}
 //If we ever use elf files, this function is a generic call for different process formats
 int32_t process_map_memory(struct process* process)
 {
     int32_t res = 0;
-    res = process_map_binary(process);
+    switch(process->filetype)
+    {
+        case PROCESS_FILETYPE_ELF:
+            res = process_map_elf(process);
+            break;
+        case PROCESS_FILETYPE_BINARY:
+            res = process_map_binary(process);
+            break;
+        default:
+            panic("The process map is neither binary or elf");
+    }
     if(res < 0)
     {
         goto out;
