@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "config.h"
 #include "task.h"
+#include <stdbool.h>
 
 #define PROCESS_FILETYPE_ELF 0
 #define PROCESS_FILETYPE_BINARY 1
@@ -35,5 +36,8 @@ int32_t process_load_switch(const char* filename, struct process** process);
 int32_t process_load_for_slot(const char* filename, struct process** process, uint32_t process_slot);
 int32_t process_load(const char* filename, struct process** process);
 struct process* process_current();
+
+void* process_malloc(struct process* process, size_t size);
+void process_free(struct process* process, void* ptr);
 
 #endif

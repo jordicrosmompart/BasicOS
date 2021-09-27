@@ -38,6 +38,68 @@ int32_t process_switch(struct process* process)
     current_process = process;
     return 0;
 }
+static int32_t process_find_free_allocation_index(struct process* process)
+{
+    int32_t res = -ENOMEM;
+    for(int32_t i = 0; i<CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+    {
+        if(process->allocations[i] == 0)
+        {
+            res = i;
+            break;
+        }
+    }
+    return res;
+}
+void* process_malloc(struct process* process, size_t size)
+{
+    void* ptr = kzalloc(size);
+    if(!ptr)
+    {
+        return 0;
+    }
+    int32_t index = process_find_free_allocation_index(process);
+    if(index < 0)
+    {
+        return 0;
+    }
+    process->allocations[index] = ptr;
+    return ptr;
+}
+
+static bool process_is_process_pointer(struct process* process, void* ptr)
+{
+    for(int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+    {
+        if(process->allocations[i] == ptr)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void process_allocation_free(struct process* process, void* ptr)
+{
+    for (int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+    {
+        if(process->allocations[i] == ptr)
+        {
+            process->allocations[i] = 0x00;
+        }
+    }
+}
+void process_free(struct process* process, void* ptr)
+{
+    if(!process_is_process_pointer(process, ptr))
+    {
+        return; //Not process' pointer
+    }
+    
+    process_allocation_free(process, ptr);
+    kfree(ptr);
+
+}
 
 //Loads the process binary file
 static int32_t process_load_binary(const char* filename, struct process* process)
@@ -132,7 +194,7 @@ int32_t process_map_elf(struct process* process)
         //Set a page for the code that the header points to
         //Get the lower page of the header's virtual address and physical address
         //Provide end physical address and flags
-        res = paging_map_to(process->task->page_directory, paging_align_to_lower_page((void*) phdr->p_vaddr), paging_align_to_lower_page((void*) phdr_phys_address), paging_align_address(phdr_phys_address + phdr->p_filesz), flags);
+        res = paging_map_to(process->task->page_directory, paging_align_to_lower_page((void*) phdr->p_vaddr), paging_align_to_lower_page((void*) phdr_phys_address), paging_align_address(phdr_phys_address + phdr->p_memsz), flags);
         if(ISERR(res))
         {
             break;

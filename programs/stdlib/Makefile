@@ -1,0 +1,25 @@
+FILES=./build/start.o ./build/crosos.asm.o ./build/stdlib.o ./build/stdio.o ./build/crosos.o
+INCLUDES=
+FLAGS = -g -falign-jumps -falign-functions -falign-labels -falign-loops -fstrength-reduce -fomit-frame-pointer -finline-functions -Wno-unused-function -fno-builtin -Werror -Wno-unused-label -Wno-cpp -Wno-unused-parameter -nostdlib -nostartfiles -nodefaultlibs -O0 -Iinc
+
+all: ${FILES}
+#Relocatable, since when this is compiled, the main does not exist
+	i686-elf-ld -m elf_i386 -relocatable ${FILES} -o ./stdlib.elf
+
+./build/start.o: ./src/start.asm
+	nasm -f elf ./src/start.asm -o ./build/start.o
+
+./build/crosos.asm.o: ./src/crosos.asm
+	nasm -f elf ./src/crosos.asm -o ./build/crosos.asm.o
+
+./build/crosos.o: ./src/crosos.c
+	i686-elf-gcc ${INCLUDES} $(FLAGS) -std=gnu99 -c ./src/crosos.c -o ./build/crosos.o
+
+./build/stdlib.o: ./src/stdlib.c
+	i686-elf-gcc ${INCLUDES} $(FLAGS) -std=gnu99 -c ./src/stdlib.c -o ./build/stdlib.o
+
+./build/stdio.o: ./src/stdio.c
+	i686-elf-gcc ${INCLUDES} $(FLAGS) -std=gnu99 -c ./src/stdio.c -o ./build/stdio.o
+clean:
+	rm -rf ${FILES}
+	rm ./stdlib.elf
