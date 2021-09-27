@@ -59,6 +59,7 @@ typedef int32_t elf32_sword;
 typedef uint32_t elf32_addr;
 typedef int32_t elf32_off;
 
+//Program's header
 struct elf32_phdr
 {
     elf32_word p_type;
@@ -71,6 +72,7 @@ struct elf32_phdr
     elf32_word p_align;
 } __attribute__((packed));
 
+//Section's header
 struct elf32_shdr
 {
     elf32_word sh_name;
@@ -85,6 +87,7 @@ struct elf32_shdr
     elf32_word sh_entsize;
 } __attribute__((packed));
 
+//General information header
 struct elf_header
 {
     unsigned char e_ident[EI_NIDENT];

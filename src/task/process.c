@@ -81,13 +81,13 @@ static int32_t process_load_elf(const char* filename, struct process* process)
 {
     int32_t res = 0;
     struct elf_file* elf_file = 0;
-    res = elf_load(filename, &elf_file);
+    res = elf_load(filename, &elf_file); //Load elf file and structure into memory
     if (ISERR(res))
     {
         goto out;
     }
-    process->filetype = PROCESS_FILETYPE_ELF;
-    process->elf_file = elf_file;
+    process->filetype = PROCESS_FILETYPE_ELF; //Map the filetype
+    process->elf_file = elf_file; //And pointer to created struct
 
 out:   
     return res;
@@ -96,8 +96,8 @@ out:
 static int32_t process_load_data(const char* filename, struct process* process)
 {
     int32_t res = 0;
-    res = process_load_elf(filename, process);
-    if( res == -EINFORMAT)
+    res = process_load_elf(filename, process); //Try to load elf
+    if( res == -EINFORMAT) //If its not possible, try to load binary
     {
         res = process_load_binary(filename, process);
     }
@@ -117,18 +117,21 @@ int32_t process_map_elf(struct process* process)
 {
     int res = 0;
 
-    struct elf_file* elf_file = process->elf_file;
-    struct elf_header* header = elf_header(elf_file);
-    struct elf32_phdr* phdrs = elf_pheader(header);
-    for(int32_t i = 0; i < header->e_phnum; i++)
+    struct elf_file* elf_file = process->elf_file; //Gets the elf_file allocated address
+    struct elf_header* header = elf_header(elf_file); //Gets the elf header
+    struct elf32_phdr* phdrs = elf_pheader(header); //Gets the program headers
+    for(int32_t i = 0; i < header->e_phnum; i++) //Iterate every program header entry
     {
-        struct elf32_phdr* phdr = &phdrs[i];
-        void* phdr_phys_address = elf_phdr_phys_address(elf_file, phdr);
-        int32_t flags = PAGING_IS_PRESENT | PAGING_ACCESS_FROM_ALL;
-        if(phdr->p_flags & PF_W)
+        struct elf32_phdr* phdr = &phdrs[i]; //Get the entry
+        void* phdr_phys_address = elf_phdr_phys_address(elf_file, phdr); //Get physical address of the program's header
+        int32_t flags = PAGING_IS_PRESENT | PAGING_ACCESS_FROM_ALL; //Flags set by OS
+        if(phdr->p_flags & PF_W) //If the writable flag of the program header is set
         {
-            flags |= PAGING_IS_WRITABLE;
+            flags |= PAGING_IS_WRITABLE; //Add the writable OS flag for the paging
         }
+        //Set a page for the code that the header points to
+        //Get the lower page of the header's virtual address and physical address
+        //Provide end physical address and flags
         res = paging_map_to(process->task->page_directory, paging_align_to_lower_page((void*) phdr->p_vaddr), paging_align_to_lower_page((void*) phdr_phys_address), paging_align_address(phdr_phys_address + phdr->p_filesz), flags);
         if(ISERR(res))
         {
@@ -137,7 +140,7 @@ int32_t process_map_elf(struct process* process)
     }
     return res;
 }
-//If we ever use elf files, this function is a generic call for different process formats
+//Generic call for different process formats
 int32_t process_map_memory(struct process* process)
 {
     int32_t res = 0;

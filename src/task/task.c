@@ -218,7 +218,7 @@ uint32_t task_init(struct task* task, struct process* process)
     task->registers.ip = CROSOS_PROGRAM_VIRTUAL_ADDRESS; //When we first create a task, the start address is a hardcoded value
     if(process->filetype == PROCESS_FILETYPE_ELF)
     {
-        task->registers.ip = elf_header(process->elf_file)->e_entry;
+        task->registers.ip = elf_header(process->elf_file)->e_entry; //Set the IP register to the entry point stated by the header file of the elf file
     }
     task->registers.ss = USER_DATA_SEGMENT; //The created tasks are used by users
     task->registers.cs = USER_CODE_SEGMENT; //The CS register must point to the user's code segment

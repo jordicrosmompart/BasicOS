@@ -14,7 +14,7 @@ struct process
     char filename[CROSOS_MAX_PATH];
     struct task* task; //Main process task
     void* allocations[CROSOS_MAX_PROGRAM_ALLOCATIONS]; //Whenever the process mallocs, we add the address here to free it when the process dies
-    PROCESS_FILETYPE filetype;
+    PROCESS_FILETYPE filetype; //It may be a binary or an elf file
     union 
     {
         void* ptr; //Physical pointer to process memory
