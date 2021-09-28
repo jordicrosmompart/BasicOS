@@ -33,11 +33,14 @@ struct process* process_get(uint32_t process_id)
     return processes[process_id];
 }
 
+//Sets the parameter process to the current process
 int32_t process_switch(struct process* process)
 {
     current_process = process;
     return 0;
 }
+
+//Finds a free spot on the allocations array
 static int32_t process_find_free_allocation_index(struct process* process)
 {
     int32_t res = -ENOMEM;
@@ -45,50 +48,56 @@ static int32_t process_find_free_allocation_index(struct process* process)
     {
         if(process->allocations[i] == 0)
         {
-            res = i;
+            res = i; // Return the free index
             break;
         }
     }
     return res;
 }
+
+//Allocates memory for a process and stores it on its allocations array
 void* process_malloc(struct process* process, size_t size)
 {
-    void* ptr = kzalloc(size);
+    void* ptr = kzalloc(size); //Allocate the memory
     if(!ptr)
     {
         return 0;
     }
-    int32_t index = process_find_free_allocation_index(process);
+    int32_t index = process_find_free_allocation_index(process); //Find a free index on the array
     if(index < 0)
     {
         return 0;
     }
-    process->allocations[index] = ptr;
+    process->allocations[index] = ptr; //Assign the free spot to the allocated array
     return ptr;
 }
 
+//Finds for the pointer in the allocations array of a process
 static bool process_is_process_pointer(struct process* process, void* ptr)
 {
     for(int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
     {
         if(process->allocations[i] == ptr)
         {
-            return true;
+            return true; //Pointer found
         }
     }
     return false;
 }
 
+//Frees the pointer found in the process' allocations array
 static void process_allocation_free(struct process* process, void* ptr)
 {
     for (int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
     {
         if(process->allocations[i] == ptr)
         {
-            process->allocations[i] = 0x00;
+            process->allocations[i] = 0x00; //Free the allocation entry
         }
     }
 }
+
+//Frees the allocation array entry for a pointer and its contents
 void process_free(struct process* process, void* ptr)
 {
     if(!process_is_process_pointer(process, ptr))
@@ -96,8 +105,8 @@ void process_free(struct process* process, void* ptr)
         return; //Not process' pointer
     }
     
-    process_allocation_free(process, ptr);
-    kfree(ptr);
+    process_allocation_free(process, ptr); //Free allocation
+    kfree(ptr); //Free contents in the pointer
 
 }
 

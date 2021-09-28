@@ -2,6 +2,7 @@
 #include "idt/idt.h"
 #include "task/task.h"
 
+//Sums two input numbers (located at the stack). Example function
 void* isr80h_command0_sum(struct interrupt_frame* frame)
 {
     int v2 = (int) task_get_stack_item(task_current(), 1);

@@ -3,39 +3,41 @@
 #include "stdlib.h"
 #include <stdarg.h>
 
+//Put char by calling system interrupt
 int putchar(int c)
 {
     crosos_putchar((char) c);
     return 0;
 }
 
+//Formatted print with any amount of parameters
 int printf(const char* fmt, ...)
 {
-    va_list ap;
-    const char* p;
-    char* sval;
-    int ival;
+    va_list ap; //Other parameters
+    const char* p; //Pointer to current char to print
+    char* sval; //String parameters 
+    int ival; //Int parameters
 
-    va_start(ap, fmt);
-    for(p = fmt; *p; p++)
+    va_start(ap, fmt); //Initialize ap to retrieve parameters after the 'fmt' variable
+    for(p = fmt; *p; p++) //Set 
     {
         if(*p != '%')
         {
-            putchar(*p);
+            putchar(*p); //Put 
             continue;
         }
 
-        switch(*++p)
+        switch(*++p) //If the char is a %, switch case with the following char
         {
-            case 'i':
-                ival = va_arg(ap, int);
-                print(itoa(ival));
+            case 'i': //If it is an 'i'
+                ival = va_arg(ap, int); //retrieves the following argument
+                print(itoa(ival)); 
                 break;
-            case 's':
-                sval = va_arg(ap, char*);
-                print(sval);
+            case 's': //If it is an 's'
+                sval = va_arg(ap, char*); //Retrieves a string argument
+                print(sval); 
                 break;
-            default:
+            default: //Print the following char
                 putchar(*p);
                 break;
         }

@@ -2,14 +2,13 @@
 #include "stdlib.h"
 #include "stdio.h"
 
+//Example program to test the system calls
 int main(int argc, char** argv)
 {
     printf("My age is %i\n", 24);
     print("Printing from stdlib\n");
     print(itoa(8765));
     void* ptr = malloc(512);
-
-    putchar('Z');
     free(ptr);
 
     char buff[1024];

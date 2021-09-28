@@ -2,6 +2,8 @@
 
 section .asm
 
+;This file is where the system calls are handled
+;Set of global functions that perform an int 0x80 with the correct command number on the eax
 global print:function
 global crosos_getkey:function
 global crosos_putchar:function
@@ -19,7 +21,7 @@ print:
     pop ebp
     ret
 
-; int getey()
+; int crosos_getey()
 crosos_getkey:
     push ebp
     mov ebp, esp
@@ -28,7 +30,7 @@ crosos_getkey:
     pop ebp
     ret
 
-; void putchar(char c)
+; void crosos_putchar(char c)
 crosos_putchar:
     push ebp
     mov ebp, esp
