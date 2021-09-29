@@ -9,6 +9,7 @@ global crosos_getkey:function
 global crosos_putchar:function
 global crosos_malloc:function
 global crosos_free:function
+global crosos_process_load_start:function
 
 ; void print (const char* message)
 print:
@@ -58,6 +59,17 @@ crosos_free:
     mov ebp, esp
     mov eax, 5 ; Cmd free
     push dword[ebp+8] ;Pointer to free
+    int 0x80
+    add esp, 4
+    pop ebp
+    ret
+
+; void crosos_process_load_start(const char* filename)
+crosos_process_load_start:
+    push ebp
+    mov ebp, esp
+    mov eax, 6 ; Cmd start process
+    push dword[ebp+8] ; Variable filename
     int 0x80
     add esp, 4
     pop ebp

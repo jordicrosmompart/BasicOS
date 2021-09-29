@@ -42,4 +42,6 @@ int printf(const char* fmt, ...)
                 break;
         }
     }
+    va_end(ap); //Closes the parameter reading
+    return 0;
 }

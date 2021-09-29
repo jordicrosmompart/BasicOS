@@ -9,12 +9,19 @@
 #define PROCESS_FILETYPE_BINARY 1
 
 typedef unsigned char PROCESS_FILETYPE;
+
+struct process_allocation
+{
+    void* ptr;
+    size_t size;
+};
+
 struct process
 {
     uint8_t id; //Process id
     char filename[CROSOS_MAX_PATH];
     struct task* task; //Main process task
-    void* allocations[CROSOS_MAX_PROGRAM_ALLOCATIONS]; //Whenever the process mallocs, we add the address here to free it when the process dies
+    struct process_allocation allocations[CROSOS_MAX_PROGRAM_ALLOCATIONS]; //Whenever the process mallocs, we add the address here to free it when the process dies
     PROCESS_FILETYPE filetype; //It may be a binary or an elf file
     union 
     {

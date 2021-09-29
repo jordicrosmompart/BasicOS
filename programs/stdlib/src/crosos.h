@@ -9,5 +9,6 @@ void crosos_free(void* ptr);
 void crosos_putchar(char c);
 void crosos_terminal_readline(char* out, int max, bool output_while_typing);
 int crosos_getkeyblock();
+void crosos_process_load_start(const char* filename);
 
 #endif

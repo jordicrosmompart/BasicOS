@@ -46,7 +46,7 @@ static int32_t process_find_free_allocation_index(struct process* process)
     int32_t res = -ENOMEM;
     for(int32_t i = 0; i<CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
     {
-        if(process->allocations[i] == 0)
+        if(process->allocations[i].ptr == 0)
         {
             res = i; // Return the free index
             break;
@@ -66,10 +66,23 @@ void* process_malloc(struct process* process, size_t size)
     int32_t index = process_find_free_allocation_index(process); //Find a free index on the array
     if(index < 0)
     {
-        return 0;
+        goto out_err;
     }
-    process->allocations[index] = ptr; //Assign the free spot to the allocated array
+    int res = paging_map_to(process->task->page_directory, ptr, ptr, paging_align_address(ptr+size), PAGING_IS_WRITABLE | PAGING_IS_PRESENT | PAGING_ACCESS_FROM_ALL); //Creates a new page for the malloc
+    if(res < 0)
+    {
+        goto out_err;
+    }
+    process->allocations[index].ptr = ptr; //Assign the free spot to the allocated array
+    process->allocations[index].size = size;
     return ptr;
+
+out_err:
+    if(ptr)
+    {
+        kfree(ptr);
+    }
+    return 0;
 }
 
 //Finds for the pointer in the allocations array of a process
@@ -77,7 +90,7 @@ static bool process_is_process_pointer(struct process* process, void* ptr)
 {
     for(int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
     {
-        if(process->allocations[i] == ptr)
+        if(process->allocations[i].ptr == ptr)
         {
             return true; //Pointer found
         }
@@ -90,21 +103,45 @@ static void process_allocation_free(struct process* process, void* ptr)
 {
     for (int32_t i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
     {
-        if(process->allocations[i] == ptr)
+        if(process->allocations[i].ptr == ptr)
         {
-            process->allocations[i] = 0x00; //Free the allocation entry
+            process->allocations[i].ptr = 0x00; //Free the allocation entry
+            process->allocations[i].size = 0;
         }
     }
+}
+
+//Returns the allocation that matches with the provided pointer
+static struct process_allocation* process_get_allocation_by_addr(void* addr, struct process* process)
+{
+    for(int i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+    {
+        if(process->allocations[i].ptr == addr)
+        {
+            return &process->allocations[i];
+        }
+    }
+    return 0;
 }
 
 //Frees the allocation array entry for a pointer and its contents
 void process_free(struct process* process, void* ptr)
 {
-    if(!process_is_process_pointer(process, ptr))
-    {
-        return; //Not process' pointer
-    }
+
+    struct process_allocation* allocation = process_get_allocation_by_addr(ptr, process);//Unlink the pages from the process for the given address
     
+    if(!allocation)
+    {
+        return; //Not our pointer
+    }
+
+    int res = paging_map_to(process->task->page_directory, allocation->ptr, allocation->ptr, paging_align_address(allocation->ptr + allocation->size), 0x00); //Free the page used before
+
+    if(res < 0)
+    {
+        return;
+    }
+
     process_allocation_free(process, ptr); //Free allocation
     kfree(ptr); //Free contents in the pointer
 
