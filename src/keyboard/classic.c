@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define CLASSIC_KEYBOARD_CAPS_LOCK 0x3A
 
 int32_t classic_keyboard_init();
 
@@ -41,9 +42,12 @@ int32_t classic_keyboard_init()
 {
     //Registers the interrupt 0x21, keyboard
     idt_register_interrupt_callback(ISR_KEYBOARD_INTERRUPT, classic_keyboard_handle_interrupt);
+    keyboard_set_caps_lock(&classic_keyboard, KEYBOARD_CAPS_LOCK_OFF);
     outb(PS2_PORT, PS2_COMMAND_ENABLE_FIRST_PORT); //Port 0x64, 0xAE enables the first PS2 port
     return 0;
 }
+
+//Gets a scancode and returns a char, caps wise
 uint8_t classic_keyboard_scancode_to_char(uint8_t scancode)
 {
     size_t size_of_keyboard_set_one = sizeof(keyboard_scan_set_one) / sizeof(uint8_t);
@@ -51,10 +55,24 @@ uint8_t classic_keyboard_scancode_to_char(uint8_t scancode)
     {
         return 0;
     }
+
+    if(scancode == CLASSIC_KEYBOARD_CAPS_LOCK)
+    {
+        KEYBOARD_CAPS_LOCK_STATE old_state = keyboard_get_caps_lock(&classic_keyboard);
+        keyboard_set_caps_lock(&classic_keyboard, old_state == KEYBOARD_CAPS_LOCK_ON ? KEYBOARD_CAPS_LOCK_OFF : KEYBOARD_CAPS_LOCK_ON);
+    }
     char c = keyboard_scan_set_one[scancode]; //Return the index
+    if(keyboard_get_caps_lock(&classic_keyboard) == KEYBOARD_CAPS_LOCK_OFF)
+    {
+        if(c >= 'A' && c <= 'Z')
+        {
+            c += 32; 
+        }
+    }
     return c;
 }
 
+//Handler for a keyboard interrupt
 void classic_keyboard_handle_interrupt()
 {
     kernel_page(); //Switch to kernel page directory
@@ -78,6 +96,7 @@ void classic_keyboard_handle_interrupt()
 
 }
 
+//Classic keyboard getter
 struct keyboard* classic_init()
 {
     return &classic_keyboard;

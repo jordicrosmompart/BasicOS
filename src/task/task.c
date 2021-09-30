@@ -16,6 +16,7 @@ struct task* current_task = 0;
 struct task* task_tail = 0;
 struct task* task_head = 0;
 
+//Sets the current task and its page directory
 int32_t task_switch(struct task* task)
 {
     current_task = task;
@@ -23,6 +24,7 @@ int32_t task_switch(struct task* task)
     return 0;
 }
 
+//Saves registers to task
 void task_save_state(struct task* task, struct interrupt_frame* frame)
 {
     //Save all the registers that come from the frame of the interrupt
@@ -83,6 +85,7 @@ out:
     return res;
 }
 
+//Saves state of a task
 void task_current_save_state(struct interrupt_frame* frame)
 {
     if(!task_current())
@@ -93,6 +96,8 @@ void task_current_save_state(struct interrupt_frame* frame)
     struct task* task = task_current(); //Get current task
     task_save_state(task, frame); //Save its state
 }
+
+//Sets the kernel to the GDT entry for users and switches back to current process
 int32_t task_page()
 {
     user_registers(); //Sets the registers to the GDT USER_DATA_SEGMENT offset
@@ -100,6 +105,7 @@ int32_t task_page()
     return 0;
 }
 
+//Sets the kernel to the GDT entry for users and switches to page directory
 int32_t task_page_task(struct task* task)
 {
     user_registers();
@@ -107,6 +113,7 @@ int32_t task_page_task(struct task* task)
     return 0;
 }
 
+//Run first task found
 void task_run_first_ever_task()
 {
     if(!current_task)
@@ -117,6 +124,7 @@ void task_run_first_ever_task()
     task_return(&task_head->registers); // Performs the fake interrupt return and enters the process in user mode
 }
 
+//Initializes a task and a process
 uint32_t task_init(struct task* task, struct process* process);
 
 struct task* task_current() //Gets current task
@@ -161,6 +169,7 @@ out:
     return task;
 }
 
+//Returns next task or first in the linked list
 struct task* task_get_next() //It can return null if there are no more tasks
 {
     if(!current_task->next)
@@ -171,6 +180,7 @@ struct task* task_get_next() //It can return null if there are no more tasks
     return current_task->next;
 }
 
+//Removes a task from the linked list
 static void task_list_remove(struct task* task)
 {
     if(task->prev)
@@ -193,6 +203,8 @@ static void task_list_remove(struct task* task)
         current_task = task_get_next(); //Set the next as a current task
     }
 }
+
+//Frees the allocated memory for a task
 uint32_t task_free(struct task* task)
 {
     paging_free_4gb(task->page_directory); //Free the paging directory for the task
@@ -203,6 +215,7 @@ uint32_t task_free(struct task* task)
     return 0;
 }
 
+//Initializes a task
 uint32_t task_init(struct task* task, struct process* process)
 {
     memset(task, 0x00, sizeof(struct task)); //Initialize the task
@@ -243,4 +256,24 @@ void* task_get_stack_item(struct task* task, int32_t index)
     //Kernel ready to continue with the interrupt
 
     return result;
+}
+
+//Gets the physical address from a virtual address
+void* task_virtual_address_to_physical(struct task* task, void* virtual_address)
+{
+    void* physical_address = 0;
+    return paging_get_physical_address(task->page_directory->directory_entry, virtual_address);
+}
+
+//Gets the following task and returns to user land
+void task_next()
+{
+    struct task* next_task = task_get_next();
+    if(!next_task)
+    {
+        panic("No more tasks\n");
+    }
+
+    task_switch(next_task);
+    task_return(&next_task->registers);
 }

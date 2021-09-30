@@ -38,6 +38,7 @@ uint32_t disk_read_sector(uint32_t lba, uint32_t total, void* buff)
     return 0;
 }
 
+//Initializes a disk
 void disk_search_and_init()
 {
     memset(&disk, 0, sizeof(disk)); //Sets space in memory for the information of the used disk
@@ -47,6 +48,7 @@ void disk_search_and_init()
     disk.filesystem = fs_resolve(&disk); //Gets the filesystem of the disk
 }
 
+//Returns a disk given an index (currently only 0)
 struct disk* disk_get(uint32_t index) 
 {
     if (index != 0) //Only disk0 is implemented
@@ -56,6 +58,7 @@ struct disk* disk_get(uint32_t index)
     return &disk;
 }
 
+//Reads a disk block by an 'lba' given
 uint32_t disk_read_block(struct disk* idisk, uint32_t lba, uint32_t total, void* buff)
 {
     if(idisk != &disk) //The only disk used is the global variable of this file

@@ -6,15 +6,15 @@
 //Example program to test the system calls
 int main(int argc, char** argv)
 {
-    char* ptr = malloc(20);
-    strcpy(ptr, "Hello world");
-    print(ptr);
-    free(ptr);
 
-    ptr[0] = 'B';
-    while(1) 
-    {
-        
-    };
+    while(1)
+    {    
+        printf(argv[0]);
+        for(int i = 0; i < 1000000; i++)
+         {
+             
+         }
+    }
+
     return 0;
 }

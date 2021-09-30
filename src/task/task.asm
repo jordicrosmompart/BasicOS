@@ -61,7 +61,7 @@ restore_general_purpose_registers: ; using registers* struct, to load another ta
     mov ecx, [ebx+20]
     mov eax, [ebx+24]
     mov ebx, [ebx+12]
-    pop ebp
+    add esp, 4
     ret
 
 user_registers: ; Sets the register back to the offset of the GDT entry for the USER_DATA_SEGMENT

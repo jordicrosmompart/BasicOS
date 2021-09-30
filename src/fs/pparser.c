@@ -28,6 +28,7 @@ static uint32_t pathparser_get_drive_by_path(const char** path)
     return drive_no;
 }
 
+//Allocates a root path from a drive number
 static struct path_root* pathparser_create_root(uint32_t drive_number)
 {
     struct path_root* path_r = kzalloc(sizeof(struct path_root)); //Allocates the needed memory for the root path
@@ -36,6 +37,7 @@ static struct path_root* pathparser_create_root(uint32_t drive_number)
     return path_r;
 }
 
+//Returns the part of a path
 static const char* pathparser_get_path_part(const char** path)
 {
     char* result_path_part = kzalloc(CROSOS_MAX_PATH); //Allocates space for the path part that will be parsed
@@ -62,6 +64,7 @@ static const char* pathparser_get_path_part(const char** path)
     return result_path_part;
 }
 
+//Creates a path part and linkes it with the previous part
 struct path_part* pathparser_parse_path_part(struct path_part* last_part, const char** path)
 {
     const char* path_part_str = pathparser_get_path_part(path);

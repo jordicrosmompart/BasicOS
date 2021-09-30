@@ -144,7 +144,9 @@ struct filesystem fat16_fs =
     .stat = fat16_stat,
     .close = fat16_close
 }; 
-struct filesystem* fat16_init() //Returns the instantiated struct
+
+//Returns the instantiated struct
+struct filesystem* fat16_init() 
 {
     strcpy(fat16_fs.name, "FAT16");
     return &fat16_fs;
@@ -159,11 +161,13 @@ static void fat16_init_private(struct disk* disk, struct fat_private* private)
     private->directory_stream = diskstreamer_new(disk->id);
 }
 
+//Returns the absolute offset from sector number
 uint32_t fat16_sector_to_absolute(struct disk* disk, uint32_t sector)
 {
     return sector * disk->sector_size;
 }
 
+//Get the number of items for a given directory
 uint32_t fat16_get_total_items_for_directory(struct disk* disk, uint32_t directory_start_sector)
 {
     struct fat_directory_item item;
@@ -211,9 +215,11 @@ out:
     return res;
 }
 
+//Gets the root directory from the FAT heders in disk
 uint32_t fat16_get_root_directory(struct disk* disk, struct fat_private* fat_private, struct fat_directory* directory)
 {
     uint32_t res = 0;
+    struct fat_directory_item* dir = 0x00;
     struct fat_header* primary_header = &fat_private->header.primary_header; //Main header of the private section (the one in the bootloader)
     uint32_t root_dir_sector_pos = (primary_header->fat_copies * primary_header->sectors_per_fat) + primary_header->reserved_sectors; //Offset (in sectors) of the root directory
     uint32_t root_dir_entries = fat_private->header.primary_header.root_dir_entries; //Number of entries in the root directory
@@ -227,11 +233,11 @@ uint32_t fat16_get_root_directory(struct disk* disk, struct fat_private* fat_pri
     uint32_t total_items = fat16_get_total_items_for_directory(disk, root_dir_sector_pos);
 
     //Allocate space for the root directory
-    struct fat_directory_item* dir = kzalloc(root_dir_size);
+    dir = kzalloc(root_dir_size);
     if(!dir)
     {
         res = -ENOMEM;
-        goto out;
+        goto err;
     }
 
     //Get the directory streamer
@@ -240,14 +246,14 @@ uint32_t fat16_get_root_directory(struct disk* disk, struct fat_private* fat_pri
     if(diskstreamer_seek(stream, fat16_sector_to_absolute(disk, root_dir_sector_pos)) != CROSOS_ALL_OK)
     {
         res = -EIO;
-        goto out;
+        goto err;
     }
 
     //Read the contents of the sector of root directory
     if(diskstreamer_read(stream, dir, root_dir_size) != CROSOS_ALL_OK)
     {
         res = -EIO;
-        goto out;
+        goto err;
     }
 
     directory->item = dir; //Get the directory
@@ -256,9 +262,17 @@ uint32_t fat16_get_root_directory(struct disk* disk, struct fat_private* fat_pri
     directory->ending_sector_pos = root_dir_sector_pos + (root_dir_size / disk->sector_size); //Last sector
 out:
     return res;
+
+err:
+    if(dir)
+    {
+        kfree(dir);
+    }
+    return res;
 }
 
-uint32_t fat16_resolve(struct disk* disk) //Figures if the disk is using FAT16
+//Figures if the disk is using FAT16
+uint32_t fat16_resolve(struct disk* disk) 
 {
     uint32_t res = 0;
     struct fat_private* fat_private = kzalloc(sizeof(struct fat_private)); //Gets the private data from disk
@@ -306,19 +320,23 @@ out:
 }
 
 //Copy the filename of the item structure to a string for further treatment
-void fat16_to_proper_string(char** out, const char* in)
+void fat16_to_proper_string(char** out, const char* in, size_t size)
 {
+    int i = 0;
     while(*in != 0x00 && *in != 0x20) //While the end of the filename is not reached
     {
         **out = *in; //Copy value to string
         *out += 1; //Increment pointer position to next string element
         in += 1; //Increment the in pointer to get the next character
+        if(i >= size -1) //Check if the filename or extension reaches the max value.
+        {
+            break;
+        }
+        i++;
     }
+    
+    **out = 0x00; //Finish the string with a null character, if the original finishes with a space
 
-    if(*in == 0x20)
-    {
-        **out = 0x00; //Finish the string with a null character, if the original finishes with a space
-    }
 }
 
 //Gets the name of the directory item + possible extension to 'out'
@@ -326,12 +344,12 @@ void fat16_get_full_relative_filename(struct fat_directory_item* item, char* out
 {
     memset(out, 0x00, max_len); //Initializes the 'out' string
     char *out_tmp = out;
-    fat16_to_proper_string(&out_tmp, (const char*) item->file_name);
+    fat16_to_proper_string(&out_tmp, (const char*) item->file_name, sizeof(item->file_name));
     if(item->ext[0] != 0x00 && item->ext[0] != 0x20) //If the extension of the item exists (different than a null character and a space)
     {
         //Item found
         *out_tmp++ = '.'; //Add the dot
-        fat16_to_proper_string(&out_tmp, (const char*) item->ext); //Add the extension to the name
+        fat16_to_proper_string(&out_tmp, (const char*) item->ext, sizeof(item->ext)); //Add the extension to the name
     }
 }
 
@@ -355,22 +373,26 @@ struct fat_directory_item* fat16_clone_directory_item(struct fat_directory_item*
     return item_copy;
 }
 
+//Gets the address of the first cluster for an item
 static uint32_t fat16_get_first_cluster(struct fat_directory_item* item)
 {
     return (item->high_16_bits_first_cluster | item->low_16_bits_first_cluster);
 }
 
+//Gets the sector from a cluster number
 static uint32_t fat16_cluster_to_sector(struct fat_private* private, uint32_t cluster)
 {
     //Last position of the root_directory + cluster * sectors_per_cluster. The -2 comes from the definition of the FAT. Check manual
     return private->root_directory.ending_sector_pos + ((cluster - 2) * private->header.primary_header.sectors_per_cluster);
 }
 
+//Gets the first fat sector
 static uint32_t fat16_get_first_fat_sector(struct fat_private* private)
 {
     return private->header.primary_header.reserved_sectors; //Returns the position of the FAT table
 }
 
+//Reads a fat entry
 static uint32_t fat16_get_fat_entry(struct disk* disk, uint32_t cluster)
 {
     uint32_t res = -1;
@@ -403,6 +425,7 @@ out:
     return res;
 }
 
+//Gets the cluster that we need to read given an offset
 static uint32_t fat16_get_cluster_for_offset(struct disk* disk, uint32_t starting_cluster, uint32_t offset)
 {
     uint32_t res = 0;
@@ -412,7 +435,7 @@ static uint32_t fat16_get_cluster_for_offset(struct disk* disk, uint32_t startin
     uint32_t clusters_ahead = offset / size_of_cluster_bytes; // If the offset is higher than a cluster size, we will have to look for another cluster than the starting one
     for(uint32_t i = 0; i < clusters_ahead; i++)
     {
-        //Entry gives the next cluster to read in the FAT or a error flag
+        //Entry gives the next cluster to read in the FAT or an error flag
         uint32_t entry = fat16_get_fat_entry(disk, cluster_to_use); //Gets the entry on the FAT table of the cluster we want to read
 
         //Check that the sector read is correct
@@ -430,7 +453,7 @@ static uint32_t fat16_get_cluster_for_offset(struct disk* disk, uint32_t startin
             goto out;
         }
 
-        //Reserved sectors?
+        //Reserved sectors
         if(entry == 0xFF0 || entry == 0xFF6)
         {
             res = -EIO;
@@ -452,6 +475,7 @@ out:
     return res;
 }
 
+//Reads a file
 static uint32_t fat16_read_internal_from_stream(struct disk* disk, struct disk_stream* stream, uint32_t cluster, uint32_t offset, uint32_t total, void* out)
 {
     uint32_t res = 0;
@@ -502,6 +526,7 @@ static uint32_t fat16_read_internal(struct disk* disk, uint32_t stating_cluster,
 
 }
 
+//Frees a loaded directory
 void fat16_free_directory(struct fat_directory* directory)
 {
     if(!directory)
@@ -517,6 +542,7 @@ void fat16_free_directory(struct fat_directory* directory)
     kfree(directory);
 }
 
+//Frees a generic fat item
 void fat16_fat_item_free(struct fat_item* item)
 {
     if(item->type == FAT_ITEM_TYPE_DIRECTORY)
@@ -655,42 +681,60 @@ struct fat_item* fat16_get_directory_entry(struct disk* disk, struct path_part* 
 out:
     return current_item; //Return the file
 }
+
+//Loads a file from path and mode
 void* fat16_open(struct disk* disk, struct path_part* path, FILE_MODE mode) //Implements the open file in FAT16
 {
+    struct fat_file_descriptor* descriptor = 0;
+    int err_code = 0;
     //Read only supported for now
     if(mode != FILE_MODE_READ)
     {
-        return ERROR(-ERDONLY);
+        err_code = -ERDONLY;
+        goto err;
     }
 
     //Create and allocate a file_descriptor, containing an item (directory or file) and a position
-    struct fat_file_descriptor* descriptor = 0;
     descriptor = kzalloc(sizeof(struct fat_file_descriptor));
     if(!descriptor)
     {
-        return ERROR(-ENOMEM);
+        err_code = -ENOMEM;
+        goto err;
     }
     //Get the directory entry, from path and disk
     descriptor->item = fat16_get_directory_entry(disk, path);
     if(!descriptor->item)
     {
-        return ERROR(-EIO);
+        err_code = -EIO;
+        goto err;
     }
     descriptor->pos = 0; //Position hardcoded to 0, needs to be reimplemented?
 
     return descriptor;
+
+err:
+    if(descriptor)
+    {
+        kfree(descriptor);
+    }
+    return ERROR(err_code);
 }
+
+//Frees an item and its descriptor
 static void fat16_free_file_descriptor(struct fat_file_descriptor* desc)
 {
     fat16_fat_item_free(desc->item); //Deallocates the item struct of the private desriptor
     kfree(desc); //Deallocates the private descriptor
 }
+
+//Close an item
 uint32_t fat16_close(void* private) //Frees the allocated spae for the descriptor used for the file
 {
     fat16_free_file_descriptor((struct fat_file_descriptor*) private);
     return 0;
 }
 
+//Gets the filesize of an open file and flags
 uint32_t fat16_stat(struct disk* disk, void* private, struct file_stat* stat)
 {
     uint32_t res = 0;
@@ -715,6 +759,7 @@ out:
 
 }
 
+//Reads contents from a loaded file
 uint32_t fat16_read(struct disk* disk, void* descriptor, uint32_t size, uint32_t nmemb, char* out_ptr)
 {  
     uint32_t res = 0;
@@ -741,6 +786,7 @@ out:
 
 }
 
+//Sets the offset prior to read a file
 uint32_t fat16_seek(void* private, uint32_t offset, FILE_SEEK_MODE seek_mode)
 {
     uint32_t res = 0;

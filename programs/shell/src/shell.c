@@ -3,6 +3,7 @@
 #include "stdlib.h"
 #include "crosos.h"
 
+//Basic shell, it reads a command typed and opens a process with arguments
 int main(int argc, char** argv)
 {
     print("CrosOS v1.0.0 initialized\n");
@@ -11,8 +12,8 @@ int main(int argc, char** argv)
         print("> ");
         char buff[1024];
         crosos_terminal_readline(buff, sizeof(buff), true);
-        crosos_process_load_start(buff);
-
+        print("\n");
+        crosos_system_run(buff);
         print("\n");
     }
     return 0;

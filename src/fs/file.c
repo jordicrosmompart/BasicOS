@@ -60,12 +60,14 @@ void fs_init()
     fs_load();
 }
 
+//Get am open descriptor
 static void file_free_descriptor(struct file_descriptor* desc)
 {
     file_descriptors[desc->index-1] = 0x00;
     kfree(desc);
 }
 
+//Sets a new descriptor into the array
 static uint32_t file_new_descriptor(struct file_descriptor** desc_out)
 {
     uint32_t res = -ENOMEM;
@@ -113,6 +115,7 @@ struct filesystem* fs_resolve (struct disk* disk)
     return fs; //Returns found filesystem
 }
 
+//Gets the opening mode by the string provided
 FILE_MODE file_get_mode_by_string(const char* str)
 {
     FILE_MODE mode = FILE_MODE_INVALID;
@@ -130,6 +133,7 @@ FILE_MODE file_get_mode_by_string(const char* str)
     }
     return mode;
 }
+
 //Opens a file.
 uint32_t fopen(const char* filename, const char* mode_str)
 {
@@ -202,6 +206,7 @@ out:
     return res;
 }
 
+//Calls the appropiate stat function for the file descriptor filesystem
 uint32_t fstat(uint32_t fd, struct file_stat* stat)
 {
     uint32_t res = 0;
@@ -218,6 +223,7 @@ out:
     return res;
 }
 
+//Closes a file by calling the appropiate filesystem close function
 uint32_t fclose(uint32_t fd)
 {
     uint32_t res = 0;
@@ -238,6 +244,7 @@ out:
     return res;
 }
 
+//Generic call to seek that passes the information to the appropiate filesystem function
 uint32_t fseek(uint32_t fd, uint32_t offset, FILE_SEEK_MODE whence)
 {
     uint32_t res = 0;

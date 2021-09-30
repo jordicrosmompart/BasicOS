@@ -1,5 +1,6 @@
 #include "string.h"
 
+//Turns the string into lower caps
 char tolower(char s1)
 {
     if(s1 >= 65 && s1 <= 90) //ASCII table
@@ -7,6 +8,8 @@ char tolower(char s1)
         s1 +=32;
     }
 }
+
+//Counts the length of a string
 uint32_t strlen(const char* ptr)
 {
     uint32_t i = 0;
@@ -19,6 +22,7 @@ uint32_t strlen(const char* ptr)
     return i;
 }
 
+//Copies strings
 char* strcpy(char* dest, const char* src)
 {
     char* res = dest;
@@ -33,6 +37,7 @@ char* strcpy(char* dest, const char* src)
     return res;
 }
 
+//Copies strings for a given length
 char* strncpy(char* dest, const char* src, int32_t count)
 {
     int32_t i = 0;
@@ -47,15 +52,19 @@ char* strncpy(char* dest, const char* src, int32_t count)
     return dest;
 }
 
+//Checks if it is a numeric ASCII char
 bool isdigit(char c)
 {
     return c >= 48 && c <=57;
 }
+
+//ASCII char to number
 uint32_t tonumericdigit(char c)
 {
     return c - 48;
 }
 
+//Counts the string length
 uint32_t strnlen(const char* ptr, uint32_t max)
 {
     uint32_t i = 0;
@@ -69,6 +78,7 @@ uint32_t strnlen(const char* ptr, uint32_t max)
     return i;
 }
 
+//Counts a string length for a given terminator
 uint32_t strnlen_terminator(const char* str, uint32_t max, char terminator)
 {
     uint32_t i = 0;
@@ -83,6 +93,7 @@ uint32_t strnlen_terminator(const char* str, uint32_t max, char terminator)
     return i;
 }
 
+//Compares strings non caps aware
 uint32_t istrncmp(const char* s1, const char* s2, uint32_t n)
 {
     unsigned char u1, u2;
@@ -100,6 +111,8 @@ uint32_t istrncmp(const char* s1, const char* s2, uint32_t n)
         }
     }
 }
+
+//Compares strings for a given size
 uint32_t strncmp(const char* str1, const char* str2, uint32_t n)
 {
     unsigned char u1, u2;

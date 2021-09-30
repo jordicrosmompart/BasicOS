@@ -43,17 +43,33 @@ out:
     return res;
 }
 
+//Get index of the tail value
 static int32_t keyboard_get_tail_index(struct process* process)
 {
     return process->keyboard.tail % sizeof(process->keyboard.buffer); //Returns the value of the tail % the size of the buffer of the keyboard, to not overflow the buffer
 }
 
+//Performs a backspace on the buffer array
 void keyboard_backspace(struct process* process) //Backspace means erase the last input character
 {
     process->keyboard.tail -= 1; //Decrease the tail
     int32_t real_index = keyboard_get_tail_index(process); //Get used index
     process->keyboard.buffer[real_index] = 0x00; //Assign it to null
 }
+
+//Set the caps of the keyboard
+void keyboard_set_caps_lock(struct keyboard* keyboard, KEYBOARD_CAPS_LOCK_STATE state)
+{
+    keyboard->caps_lock_state = state;
+}
+
+//Get the caps of the keyboard
+KEYBOARD_CAPS_LOCK_STATE keyboard_get_caps_lock(struct keyboard* keyboard)
+{
+    return keyboard->caps_lock_state;
+}
+
+//Push char to process' keyboard
 void keyboard_push(char c)
 {
     struct process* process = process_current(); //Get current process
@@ -72,6 +88,7 @@ void keyboard_push(char c)
     process->keyboard.tail++; //Increment tail index
 }
 
+//Pops a key from the current process' keyboard
 char keyboard_pop()
 {
     if(!task_current())

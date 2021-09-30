@@ -10,6 +10,9 @@ global crosos_putchar:function
 global crosos_malloc:function
 global crosos_free:function
 global crosos_process_load_start:function
+global crosos_system:function
+global crosos_process_get_arguments:function
+global crosos_exit:function
 
 ; void print (const char* message)
 print:
@@ -72,5 +75,36 @@ crosos_process_load_start:
     push dword[ebp+8] ; Variable filename
     int 0x80
     add esp, 4
+    pop ebp
+    ret
+
+; int crosos_system(struct command_argument* arguments)
+crosos_system:
+    push ebp
+    mov ebp, esp
+    mov eax, 7 ; Cmd system command
+    push dword[ebp+8] ; Variable 'arguments'
+    int 0x80
+    add esp, 4
+    pop ebp
+    ret
+
+; void crosos_process_get_arguments(struct process_arguments* arguments)
+crosos_process_get_arguments:
+    push ebp
+    mov ebp, esp
+    mov eax, 8 ; Cmd get process arguments
+    push dword[ebp+8] ; Variable arguments
+    int 0x80
+    add esp, 4
+    pop ebp
+    ret
+
+; void crosos_exit()
+crosos_exit:
+    push ebp
+    mov ebp, esp
+    mov eax, 9 ; Cmd exit current process
+    int 0x80
     pop ebp
     ret

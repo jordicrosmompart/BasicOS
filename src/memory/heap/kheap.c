@@ -7,6 +7,7 @@
 struct heap kernel_heap; //Made of the table and the start address of the heap
 struct heap_table kernel_heap_table; //Contains 4096B entries and size of the same table
 
+//Initializes the kernel heap
 void kheap_init()
 {
     int total_table_entries = CROSOS_HEAP_SIZE_BYTES / CROSOS_HEAP_BLOCK_SIZE;

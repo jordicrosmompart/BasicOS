@@ -31,6 +31,7 @@ void encode_gdt_entry(uint8_t* target, struct gdt_structured source)
     target[5] = source.type;
 }
 
+//Parses a human-readable GDT to the structure needed by the processor
 void gdt_structured_to_gdt(struct gdt* gdt, struct gdt_structured* structured, uint32_t total_entries)
 {
     for(uint32_t i = 0; i < total_entries; i++) //Iterate all entries

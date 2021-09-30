@@ -28,11 +28,13 @@ uint16_t terminal_make_char(char c, char color)
      return (color << 8) | c; //little endian. The video memory needs to be loaded with ASCII + color code. Little endiannes makes us to do it reversedly
 }
 
+//Puts a char to the terminal
 void terminal_putchar(int x, int y, char c, char color) 
 {
     video_mem[y*VGA_WIDTH + x] = terminal_make_char(c, color);
 }
 
+//Performs a backspace in the terminal output
 void terminal_backspace()
 {
     if(terminal_row == 0 && terminal_col == 0) //Checks if we are at the beginning of the terminal
@@ -57,6 +59,8 @@ void terminal_backspace()
     } 
     terminal_col--; //Substracts a column, to get the position just overwriten with a whitespace
 }
+
+//Writes a char in a given color
 void terminal_writechar(char c, char color) 
 {
     if(c == '\n') 
@@ -80,6 +84,7 @@ void terminal_writechar(char c, char color)
     }
 }
 
+//It initializes the terminal to all black whitespaces
 void terminal_initialize () 
 {
     video_mem = (uint16_t*) 0xB8000;
@@ -90,6 +95,7 @@ void terminal_initialize ()
     }
 }
 
+//Prints a string to the terminal
 void print(const char* string) 
 {
     size_t len = strlen(string);
@@ -100,12 +106,14 @@ void print(const char* string)
 
 static struct paging_4gb_chunk* kernel_chunk = 0;
 
+//Kernel panic function
 void panic(const char* msg)
 {
     print(msg);
     while(1) {}
 }
 
+//Sets the processor to kernel land
 void kernel_page()
 {
     kernel_registers(); //Sets the kernel segment registers to the offset of the GDT for kernel_data
@@ -123,6 +131,7 @@ struct gdt_structured gdt_structured[CROSOS_TOTAL_GDT_SEGMENTS] = {
     {.base = (uint32_t) &tss, .limit = sizeof(tss), .type = 0xE9} //TSS Segment
 };
 
+//Entry point of the kernel
 void kernel_main() 
 {
     terminal_initialize();
@@ -166,12 +175,30 @@ void kernel_main()
     keyboard_init();
 
     struct process* process = 0;
-    int32_t res = process_load_switch("0:/shell.elf", &process);
+    int32_t res = process_load_switch("0:/blank.elf", &process);
     if(res != CROSOS_ALL_OK)
     {
         panic("Failed to load blank.elf\n");
     }
     
+    struct command_argument argument;
+    strcpy(argument.argument, "testing:");
+    argument.next = 0x00;
+    
+    process_inject_arguments(process, &argument);
+
+    res = process_load_switch("0:/blank.elf", &process);
+    if(res != CROSOS_ALL_OK)
+    {
+        panic("Failed to load blank.elf\n");
+    }
+
+    strcpy(argument.argument, "abc:");
+    argument.next = 0x00;
+    
+    process_inject_arguments(process, &argument);
+
+
     task_run_first_ever_task();
 
     while(1) {}

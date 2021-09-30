@@ -31,6 +31,7 @@ struct paging_4gb_chunk* paging_new_4gb(uint8_t flags)
     return chunk_4gb;
 }
 
+//Switches the current page directory
 void paging_switch(struct paging_4gb_chunk* directory)
 {
     paging_load_directory(directory->directory_entry); //Load to cr3 register the address of the page directory
@@ -51,11 +52,13 @@ void paging_free_4gb(struct paging_4gb_chunk* chunk)
     kfree(chunk); //Frees the whole chunk
 }
 
+//Gets the page directory
 uint32_t* paging_4gb_chunk_get_directory(struct paging_4gb_chunk* chunk) 
 {
     return chunk->directory_entry; // Returns the address of the paging directory
 }
 
+//Checks if a given address is aligned
 bool paging_is_aligned(void* address)
 {
     return ((uint32_t) address % PAGING_PAGE_SIZE)== 0; //Checks that the address provided is aligned
@@ -89,6 +92,7 @@ void* paging_align_address(void* ptr)
     return ptr;
 }
 
+//Aligns an address to the lower page
 void* paging_align_to_lower_page(void* addr)
 {
     uint32_t _addr = (uint32_t) addr;
@@ -96,6 +100,7 @@ void* paging_align_to_lower_page(void* addr)
     return (void*) _addr;
 }
 
+//Maps a given physical to virtual address with flags
 int32_t paging_map(struct paging_4gb_chunk* directory, void* virt, void* phys, int32_t flags)
 {
     if(((uint32_t) virt % PAGING_PAGE_SIZE) || ((uint32_t) phys % PAGING_PAGE_SIZE))
@@ -106,6 +111,7 @@ int32_t paging_map(struct paging_4gb_chunk* directory, void* virt, void* phys, i
     return paging_set(directory->directory_entry, virt, (uint32_t) phys | flags);
 }
 
+//Maps multiple pages
 int32_t paging_map_range(struct paging_4gb_chunk* directory, void* virt, void* phys, int32_t count, int32_t flags)
 {
     int32_t res = 0;
@@ -121,6 +127,7 @@ int32_t paging_map_range(struct paging_4gb_chunk* directory, void* virt, void* p
     return res;
 }
 
+//Maps a physical address range to virtual addresses
 int32_t paging_map_to(struct paging_4gb_chunk* directory, void* virt, void* phys, void* phys_end, int32_t flags)
 {
     int32_t res = 0;
@@ -177,6 +184,14 @@ uint32_t paging_set(uint32_t* directory, void* virt, uint32_t val)
     table[table_index] = val; // Set the address + flags to the pagins table
 
     return 0;
+}
+
+//Gets physical address from page directory
+void* paging_get_physical_address(uint32_t* directory, void* virt)
+{
+    void* virt_addr_new = (void*) paging_align_to_lower_page(virt);
+    void* difference = (void*) ((uint32_t) virt - (uint32_t) virt_addr_new);
+    return (void*) ((paging_get(directory, virt_addr_new) & 0xfffff000) + difference);
 }
 
 //Returns the physical address for 'virt' of the 'directory'

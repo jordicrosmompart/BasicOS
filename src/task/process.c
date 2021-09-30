@@ -12,11 +12,13 @@ struct process* current_process = 0; //Current process that is running
 
 static struct process* processes[CROSOS_MAX_PROCESSES] = {};
 
+//Cleans the allocated memory for the process
 static void process_init(struct process* process)
 {
-    memset(process, 0x00, sizeof(struct process)); //Cleans the allocated memory for the process
+    memset(process, 0x00, sizeof(struct process)); 
 }
 
+//Returns current process
 struct process* process_current()
 {
     return current_process;
@@ -124,6 +126,166 @@ static struct process_allocation* process_get_allocation_by_addr(void* addr, str
     return 0;
 }
 
+//Returns the arguments of the proces
+void process_get_arguments(struct process* process, int* argc, char*** argv)
+{
+    *argc = process->arguments.argc;
+    *argv = process->arguments.argv;
+}
+
+//Counts the number of arguments linked to the parameter structure
+int process_count_command_arguments(struct command_argument* root_argument)
+{
+    struct command_argument* current = root_argument;
+    int i = 0;
+    while(current)
+    {
+        i++;
+        current = current->next;
+    }
+    return i;
+}
+
+//Loads arguments to the current process
+int process_inject_arguments(struct process* process, struct command_argument* root_argument)
+{
+    int res = 0;
+
+    struct command_argument* current = root_argument;
+    int i = 0;
+    int argc = process_count_command_arguments(root_argument);
+    if(!argc)
+    {
+        res = -EIO;
+        goto out;
+    }
+
+    char** argv = process_malloc(process, sizeof(const char*) * argc);
+    if(!argv)
+    {
+        res = -ENOMEM;
+        goto out;
+    }
+
+    while(current)
+    {
+        char* argument_str = process_malloc(process, sizeof(current->argument));
+        if(!argument_str)
+        {
+            res = -ENOMEM;
+            goto out;
+        }
+
+        strncpy(argument_str, current->argument, sizeof(current->argument));
+        argv[i] = argument_str;
+        current = current->next;
+        i++;
+    }
+
+    process->arguments.argc = argc;
+    process->arguments.argv = argv;
+
+out:
+    return res;
+}
+
+//Frees the allocations of a process
+static int process_terminate_allocations(struct process* process)
+ {
+     for(int i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+     {
+         process_free(process, process->allocations[i].ptr);
+     }
+
+     return 0;
+ }
+
+//Frees the loaded binary data of a process
+static int process_free_binary_data(struct process* process)
+{
+    kfree(process->ptr);
+    return 0;
+}
+
+//Frees the loaded data of an elf file
+static int process_free_elf_data(struct process* process)
+{
+    elf_close(process->elf_file);
+    return 0;
+}
+
+//Frees the memory of a process
+static int process_free_program_data(struct process* process)
+{
+    int res = 0;
+    switch(process->filetype)
+    {
+        case PROCESS_FILETYPE_BINARY:
+            res = process_free_binary_data(process);
+            break;
+        case PROCESS_FILETYPE_ELF:
+            res = process_free_elf_data(process);
+            break;
+        default:
+            res = -EINVARG;
+    }
+    return res;
+}
+
+//Switches the process to the first process found
+static void process_switch_to_any()
+{
+    for(int i = 0; i < CROSOS_MAX_PROGRAM_ALLOCATIONS; i++)
+    {
+        if(processes[i])
+        {
+            process_switch(processes[i]);
+            return;
+        }
+    }
+
+    panic("No processes to switch to");
+}
+
+//Unlinks a process from the linked list
+static void process_unlink(struct process* process)
+{
+    processes[process->id] = 0x00;
+    if(current_process == process)
+    {
+        process_switch_to_any();
+    }
+}
+
+//Terminates a process
+int process_terminate(struct process* process)
+{
+    int res = 0;
+    res = process_terminate_allocations(process);
+    if(res < 0)
+    {
+        goto out;
+    }
+
+    res = process_free_program_data(process);
+    if(res < 0)
+    {
+        goto out;
+    }
+    kfree(process->stack); //Free the process stack memory
+
+    res = task_free(process->task);
+    if(res < 0)
+    {
+        goto out;
+    }
+
+    process_unlink(process);
+
+out:
+    return res;
+}
+
 //Frees the allocation array entry for a pointer and its contents
 void process_free(struct process* process, void* ptr)
 {
@@ -150,6 +312,7 @@ void process_free(struct process* process, void* ptr)
 //Loads the process binary file
 static int32_t process_load_binary(const char* filename, struct process* process)
 {
+    void* program_data_pointer = 0x00;
     int32_t res = 0;
     uint32_t fd = fopen(filename, "r");
     if(!fd)
@@ -165,7 +328,7 @@ static int32_t process_load_binary(const char* filename, struct process* process
         goto out;
     }
 
-    void* program_data_pointer = kzalloc(stat.filesize); //Allocates the size of the process binary file to memory
+    program_data_pointer = kzalloc(stat.filesize); //Allocates the size of the process binary file to memory
     if(!program_data_pointer)
     {
         res = -ENOMEM;
@@ -182,9 +345,18 @@ static int32_t process_load_binary(const char* filename, struct process* process
     process->size = stat.filesize; //And size
 
 out:
+    if(res < 0)
+    {
+        if(program_data_pointer)
+        {
+            kfree(program_data_pointer);
+        }
+    }
     fclose(fd); //Since it is loaded into memory, we dont need the file handle anymore
     return res;
 }
+
+//Loads an elf file process
 static int32_t process_load_elf(const char* filename, struct process* process)
 {
     int32_t res = 0;
@@ -221,6 +393,7 @@ int32_t process_map_binary(struct process* process)
     return res;
 }
 
+//Maps an elf file to the corresponding page of the process structure
 int32_t process_map_elf(struct process* process)
 {
     int res = 0;
@@ -248,6 +421,7 @@ int32_t process_map_elf(struct process* process)
     }
     return res;
 }
+
 //Generic call for different process formats
 int32_t process_map_memory(struct process* process)
 {
@@ -304,6 +478,7 @@ out:
     return res;
 }
 
+//Loads a new process and sets it as the current one
 int32_t process_load_switch(const char* filename, struct process** process)
 {
     int32_t res = process_load(filename, process);
@@ -315,6 +490,7 @@ int32_t process_load_switch(const char* filename, struct process** process)
     return res;
 }
 
+//Loads a process from slot
 int32_t process_load_for_slot(const char* filename, struct process** process, uint32_t process_slot)
 {
     int32_t res = 0;

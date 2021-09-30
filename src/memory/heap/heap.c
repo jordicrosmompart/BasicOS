@@ -76,6 +76,7 @@ static uint32_t heap_align_value_to_upper(uint32_t val)
     return val;
 }
 
+//Gets the entry type by masking the table entry
 static int heap_get_entry_type(HEAP_BLOCK_TABLE_ENTRY entry) 
 {
     return entry & 0x0F; 
@@ -120,6 +121,7 @@ uint32_t heap_get_start_block(struct heap* heap, uint32_t total_blocks)
         return bs;
 }
 
+//Translates a heap block to an address
 void* heap_block_to_address(struct heap* heap, uint32_t block) 
 {
     return heap->saddr + (block * CROSOS_HEAP_BLOCK_SIZE); //Base address + block address offset
@@ -147,6 +149,7 @@ void heap_mark_blocks_taken(struct heap* heap, uint32_t start_block, uint32_t to
     }
 }
 
+//Allocates blocks to the heap
 void* heap_malloc_blocks(struct heap* heap, uint32_t total_blocks)
 {
     void* address = 0;
@@ -166,6 +169,7 @@ out:
     return address;
 }
 
+//Translates address to block number
 uint32_t heap_address_to_block(struct heap* heap, void* address)
 {
     return ((uint32_t) (address - heap->saddr)) / CROSOS_HEAP_BLOCK_SIZE;
@@ -195,6 +199,7 @@ void* heap_malloc(struct heap* heap, size_t size)
     return heap_malloc_blocks(heap, total_blocks); //Alloc required blocks
 }
 
+//Frees space of a given pointer
 void heap_free(struct heap* heap, void* ptr) 
 {
     //It frees a group of blocks of the heap's table. The data in the heap is not cleared, it stays there as garbage

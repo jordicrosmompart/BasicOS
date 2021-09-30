@@ -18,6 +18,7 @@ struct disk_stream* diskstreamer_new(uint32_t disk_id)
     return streamer;
 }
 
+//Sets the streamer to a given offset
 uint32_t diskstreamer_seek(struct disk_stream* stream, uint32_t pos)
 {
     stream->pos = pos; //Set position to start searching
@@ -62,6 +63,7 @@ out:
     return res;
 }
 
+//Frees the streamer from allocated memory
 void diskstreamer_close(struct disk_stream* stream) 
 {
     kfree(stream);

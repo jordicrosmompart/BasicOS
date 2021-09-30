@@ -42,8 +42,8 @@ outw:
     push ebp
     mov ebp, esp
 
-    mov eax, [ebp+12]
-    mov edx, [ebp+8]
+    mov eax, [ebp+12] ; Second parameter
+    mov edx, [ebp+8] ; First parameter
     out dx, ax
 
     pop ebp

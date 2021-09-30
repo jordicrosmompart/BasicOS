@@ -11,6 +11,7 @@ void* memset(void* ptr, uint32_t c, size_t size)
     return ptr;
 }
 
+//Compares the contents of two pointers for 'count' positions
 uint32_t memcmp(void* s1, void* s2, uint32_t count)
 {
     char* c1 = s1;
@@ -26,6 +27,7 @@ uint32_t memcmp(void* s1, void* s2, uint32_t count)
     return 0;
 }
 
+//Copies 'len' address contents from 'src' to 'dest'
 void* memcpy(void* dest, void* src, uint32_t len)
 {
     char *d = dest;

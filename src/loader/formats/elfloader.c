@@ -160,6 +160,8 @@ int32_t elf_process_pheader(struct elf_file* elf_file, struct elf32_phdr* phdr)
     }
     return res;
 }
+
+//Processes the all the pheaders of an elf file
 int32_t elf_process_pheaders(struct elf_file* elf_file)
 {
     int32_t res = 0;
@@ -176,6 +178,7 @@ int32_t elf_process_pheaders(struct elf_file* elf_file)
     return res;
 }
 
+//Processes an elf file
 int32_t elf_process_loaded(struct elf_file* elf_file)
 {
     int res = 0;
@@ -236,6 +239,7 @@ out:
     return res;
 }
 
+//Frees the allocations set for an elf file
 void elf_close(struct elf_file* file)
 {
     if(!file)
